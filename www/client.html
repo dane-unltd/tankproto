@@ -1,0 +1,239 @@
+<html>
+<head>
+<title>Tank</title>
+<style>
+    body {
+        width: 640px;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+<script src="https://raw.github.com/kig/DataStream.js/master/DataStream.js"></script>
+<script src="http://threejs.org/build/three.min.js"></script>
+
+<script type="text/javascript">
+var actions = 0
+var mousePos = new THREE.Vector3(0,0,0.5)
+var ws
+var interval = 1000/30;
+var ents = new Object();
+var tileMap = new Array(10*10)
+
+var camera, scene, projector, renderer;
+var canvas
+var mat1,mat2,mat3
+var cube,sphere
+
+function init3d() {
+	camera = new THREE.PerspectiveCamera( 45, 400/300, 1, 10000 );
+	camera.position.x = 100
+	camera.position.y = 100
+	camera.position.z = 250;
+
+	scene = new THREE.Scene();
+	projector = new THREE.Projector();
+
+	var ambientLight = new THREE.AmbientLight(0x252525);
+	scene.add(ambientLight);
+	var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.9 );
+	directionalLight.position.set( 150, 50, 200 ); 
+	scene.add( directionalLight );
+
+	cube = new THREE.CubeGeometry(1,1,1)
+	sphere = new THREE.SphereGeometry(0.5,32,16)
+	mat1 = new THREE.MeshLambertMaterial( { color: 0xff0000, shading: THREE.SmoothShading } );
+	mat2 = new THREE.MeshLambertMaterial( { color: 0x00ff00, shading: THREE.SmoothShading } );
+	mat3 = new THREE.MeshLambertMaterial( { color: 0x0000ff, shading: THREE.SmoothShading } );
+
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize( 640, 480)
+
+	canvas = renderer.domElement;
+
+	document.body.appendChild( canvas );
+}
+
+function newMesh(model) {
+	var mesh
+	if (model==2){
+		mesh = new THREE.Mesh(sphere, mat2)
+	}else if (model==1){
+		mesh = new THREE.Mesh(cube, mat1)
+	}else if (model==3) {
+		mesh = new THREE.Mesh(cube, mat3)
+	}
+	scene.add(mesh)
+	return mesh
+}
+
+$(document).ready(function() {
+	if ("WebSocket" in window) {
+		init3d()
+
+		for (var t=0; t<10*10; ++t) {
+			tileMap[t] = new Object()
+		}
+		// Let us open a web socket
+		ws = new WebSocket("ws://"+document.location.host+"/ws/pong");
+		ws.binaryType = "arraybuffer";
+		ws.onopen = function() {
+			console.log("connection open")
+			clientFrame()
+		}
+		ws.onmessage = function(evt) {
+			var buf = new DataStream(evt.data)
+
+			var nEnts = buf.readUint32()
+
+			for (var i = 0; i<nEnts; i++) {
+				var id = buf.readUint32()
+				var bitMask = buf.readUint8()
+				if (!ents[id]) {
+					ents[id] = new Object()
+				}
+				var c = 0;
+				if ((bitMask & (1<<c))>0) {
+					ents[id].mesh =
+						newMesh(buf.readUint32())
+				}
+				c++
+				if ((bitMask & (1<<c))>0) {
+					ents[id].pos = buf.readFloat64Array(3)
+				}
+				c++
+				if ((bitMask & (1<<c))>0) {
+					ents[id].size = buf.readFloat64Array(3)
+					ents[id].mesh.scale.set(
+							ents[id].size[0],
+							ents[id].size[1],
+							ents[id].size[2]
+							)
+				}
+				c++
+				if ((bitMask & (1<<c))>0) {
+					ents[id].rot = buf.readFloat64()
+				}
+			}
+
+			var nTiles = 10*10
+			var nBytes = Math.ceil(nTiles/8)
+			var bitMask = buf.readUint8Array(nBytes)
+			var tile
+
+			for (var i = 0; i<nTiles; i++) {
+				var byIx = Math.floor(i / 8)
+				var bitIx = (i % 8)
+				if ((bitMask[byIx] & (1<<bitIx))>0) {
+					if (tileMap[i].mesh) {
+						scene.remove(tileMap[i].mesh)
+						tileMap[i].mesh = undefined
+					}
+					tile = buf.readUint8()
+					if (tile == 1) {
+						var x = i%10*20 + 10;
+						var y = Math.floor(i/10)*20 + 10;
+						tileMap[i].mesh =
+							newMesh(3,[20,20,10])
+						tileMap[i].mesh.position.x = x
+						tileMap[i].mesh.position.y = y
+					}
+				}
+
+			}
+		}
+		ws.onclose = function() { 
+			console.log("Connection is closed..."); 
+		};
+
+	}else{
+		alert("no websockets on your browser")
+	}
+	document.onkeydown = function(event) {
+		var key_press = String.fromCharCode(event.keyCode);
+		var key_code = event.keyCode;
+		if (key_code == 87) {
+			actions |= 1<<0
+		}
+		if (key_code == 83) {
+			actions |= 1<<1
+		}
+		if (key_code == 65) {
+			actions |= 1<<2
+		}
+		if (key_code == 68) {
+			actions |= 1<<3
+		}
+	}
+	document.onkeyup = function(event){
+		var key_press = String.fromCharCode(event.keyCode);
+		var key_code = event.keyCode;
+		if (key_code == 87) {
+			actions &= ~(1<<0)
+		}
+		if (key_code == 83) {
+			actions &= ~(1<<1)
+		}
+		if (key_code == 65) {
+			actions &= ~(1<<2)
+		}
+		if (key_code == 68) {
+			actions &= ~(1<<3)
+		}
+	}
+
+	canvas.onmousemove = function(event) {
+		var rect = canvas.getBoundingClientRect()
+		var x = (event.clientX-rect.left)*2/rect.width - 1
+		var y = -(event.clientY-rect.top)*2/rect.height + 1
+		mousePos.x = x
+		mousePos.y = y
+
+		projector.unprojectVector(mousePos,camera)
+
+		var d = -camera.position.z/(mousePos.z-camera.position.z)
+		mousePos.x=camera.position.x + d*(mousePos.x-camera.position.x)
+		mousePos.y=camera.position.y + d*(mousePos.y-camera.position.y)
+		mousePos.z=camera.position.z + d*(mousePos.z-camera.position.z)
+	}
+})
+
+function clientFrame() {
+	setTimeout(function() {
+		window.requestAnimationFrame(clientFrame);
+
+		for (var id in ents) {
+			if (ents[i].mesh) {
+				if (ents[i].pos) {
+					ents[i].mesh.position.set(
+						ents[i].pos[0],
+						ents[i].pos[1],
+						ents[i].pos[2])
+				}
+				if (ents[i].rot) {
+					ents[i].mesh.rotation.z = ents[i].rot
+				}
+			}
+		}
+		renderer.render(scene, camera)
+		sendCmd();
+	}, interval);
+}
+
+function sendCmd() {
+	var cmd = new DataStream()
+	cmd.writeUint32(actions)
+	cmd.writeFloat64(mousePos.x)
+	cmd.writeFloat64(mousePos.y)
+	cmd.writeFloat64(mousePos.z)
+	ws.send(cmd.buffer);
+}
+
+</script>
+
+</head>
+<body>
+	<div id="p1score" style="float:left">score1</div>
+	<div id = "p2score" style="float:right;margin-right:10px">score2</div>
+</body>
+</html>
