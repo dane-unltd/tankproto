@@ -133,10 +133,10 @@ $(document).ready(function() {
 					if (tile == 1) {
 						var x = i%10*20 + 10;
 						var y = Math.floor(i/10)*20 + 10;
-						tileMap[i].mesh =
-							newMesh(3,[20,20,10])
+						tileMap[i].mesh = newMesh(3)
 						tileMap[i].mesh.position.x = x
 						tileMap[i].mesh.position.y = y
+						tileMap[i].mesh.scale.set(20,20,10)
 					}
 				}
 
@@ -203,15 +203,15 @@ function clientFrame() {
 		window.requestAnimationFrame(clientFrame);
 
 		for (var id in ents) {
-			if (ents[i].mesh) {
-				if (ents[i].pos) {
-					ents[i].mesh.position.set(
-						ents[i].pos[0],
-						ents[i].pos[1],
-						ents[i].pos[2])
+			if (ents[id].mesh) {
+				if (ents[id].pos) {
+					ents[id].mesh.position.set(
+						ents[id].pos[0],
+						ents[id].pos[1],
+						ents[id].pos[2])
 				}
-				if (ents[i].rot) {
-					ents[i].mesh.rotation.z = ents[i].rot
+				if (ents[id].rot) {
+					ents[id].mesh.rotation.z = ents[id].rot
 				}
 			}
 		}

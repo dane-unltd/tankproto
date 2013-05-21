@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-type EntId uint32
 type Action uint32
 
 type UserCommand struct {
@@ -21,29 +20,22 @@ type ClientConn struct {
 	cmdBuf     chan UserCommand
 	currentCmd UserCommand
 	//TODO: remove id?
-	id    EntId
+	id    PlayerId
 	ws    *websocket.Conn
 	inBuf [1500]byte
 }
 
 var newConn = make(chan *ClientConn)
-var clients = make(map[EntId]*ClientConn)
+var clients = make(map[PlayerId]*ClientConn)
 
-var maxId = EntId(0)
-
-func newId() EntId {
-	maxId++
-	return maxId
-}
-
-func active(id EntId, action Action) bool {
+func Active(id PlayerId, action Action) bool {
 	if (clients[id].currentCmd.Actions & (1 << action)) > 0 {
 		return true
 	}
 	return false
 }
 
-func target(id EntId) *Vec {
+func target(id PlayerId) *Vec {
 	return &clients[id].currentCmd.Target
 }
 
@@ -95,7 +87,7 @@ func main() {
 			updateSimulation()
 			sendUpdates()
 		case cl := <-newConn:
-			id := newId()
+			id := newPlayerId()
 			clients[id] = cl
 			login(id)
 
@@ -123,7 +115,7 @@ func updateInputs() {
 	}
 }
 
-var removeList = make([]EntId, 3)
+var removeList = make([]PlayerId, 3)
 
 func sendUpdates() {
 	buf := &bytes.Buffer{}
@@ -140,5 +132,6 @@ func sendUpdates() {
 	for _, id := range removeList {
 		delete(clients, id)
 		disconnect(id)
+		freePlayerId(id)
 	}
 }

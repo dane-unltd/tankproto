@@ -5,47 +5,44 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 )
 
-type IdList []EntId
-type IdMap map[EntId]struct{}
 type Entity map[CompId]int
 
-type CompState interface {
-	Remove(i int)
-	Serialize(i int)
+type StateComp interface {
+	Copyer
 }
 
-//game state
+type Copyer interface {
+	Copy(src Copyer)
+}
+
+//world state
 var tileMapOld = NewTileMap(10, 10)
 var tileMap = NewTileMap(10, 10)
 
-var players = NewPlayerState()
-var playersOld = NewPlayerState()
+//entity state
+var comp = make([]BitMask, 0, 10)
 
-var pos = NewVecState(PosComp)
-var posOld = NewVecState(PosComp)
+var active = make([]bool, 0, 10)
+var child = make([]EntId, 0, 10)
 
-var size = NewVecState(SizeComp)
-var sizeOld = NewVecState(SizeComp)
+var pos = make([]Vec, 0, 10)
+var posOld = make([]Vec, 0, 10)
 
-var vel = NewVecState(VelComp)
-var velOld = NewVecState(VelComp)
+var size = make([]Vec, 0, 10)
+var sizeOld = make([]Vec, 0, 10)
 
-var rot = NewFloat64State(RotComp)
-var rotOld = NewFloat64State(RotComp)
+var vel = make([]Vec, 0, 10)
+var velOld = make([]Vec, 0, 10)
 
-var model = NewModelState()
-var modelOld = NewModelState()
+var rot = make([]float64, 0, 10)
+var rotOld = make([]float64, 0, 10)
+
+var model = make([]ModelId, 0, 10)
+var modelOld = make([]ModelId, 0, 10)
 
 //entity mangagement
-var ents = make([]Entity, 0, 100)
-var entsOld = make([]Entity, 0, 100)
-
-var entIds = make(IdMap)
-
-var comps = make(map[CompId]CompState)
 
 //initializing map
 func init() {
@@ -59,237 +56,68 @@ func init() {
 	}
 }
 
+func incMaxEnts() {
+	model = append(model, 0)
+	modelOld = append(model, 0)
+	pos = append(pos, Vec{})
+	posOld = append(posOld, Vec{})
+	vel = append(vel, Vec{})
+	velOld = append(velOld, Vec{})
+	size = append(size, Vec{})
+	sizeOld = append(sizeOld, Vec{})
+	rot = append(rot, 0)
+	rotOld = append(rotOld, 0)
+
+	comp = append(comp, NewBitMask(5))
+	active = append(active, false)
+	child = append(child, 0)
+}
+
 func copyState() {
-	modelOld.Copy(model)
-	velOld.Copy(vel)
-	posOld.Copy(pos)
-	sizeOld.Copy(size)
-	rotOld.Copy(rot)
-	playersOld.Copy(players)
+	copy(modelOld, model)
+	copy(velOld, vel)
+	copy(posOld, pos)
+	copy(sizeOld, size)
+	copy(rotOld, rot)
 
 	tileMapOld.Copy(tileMap)
 }
 
-func updateSimulation() {
-	processInput()
-	collisionCheck()
-	move()
-	placeTurrets()
-}
-
-func move() {
-	for i := range vel.v {
-		posIx := ents[vel.ids[i]][TransComp]
-		pos.v[posIx].Add(&pos.v[posIx], &vel.v[i])
-	}
-}
-
-func placeTurrets() {
-	for i, id := range players.ids {
-		childId := players.turret[i]
-		posIx := ents[id][TransComp]
-		childPosIx := ents[childId][TransComp]
-		offset := Vec{}
-		offset.Scale(4, &players.target[i])
-		pos.v[childPosIx].Add(&pos.v[posIx], &offset)
-		rot.v[childPosIx] = math.Atan2(offset[1], offset[0])
-	}
-}
-
-func processInput() {
-	for i, pl := range players.ids {
-		newVel := 0.0
-		rotIx := ents[pl][RotComp]
-		if active(pl, Forward) {
-			newVel += 5
-		}
-		if active(pl, Backward) {
-			newVel -= 5
-		}
-
-		if active(pl, Left) {
-			rot.v[rotIx] += 0.1
-		}
-		if active(pl, Right) {
-			rot.v[rotIx] -= 0.1
-		}
-
-		velIx := ents[pl][VelComp]
-		vel.v[velIx][0] = newVel * math.Cos(rot.v[rotIx])
-		vel.v[velIx][1] = newVel * math.Sin(rot.v[rotIx])
-
-		posIx := ents[pl][PosComp]
-		players.target[i].Sub(target(pl), &pos.v[posIx])
-		players.target[i].Normalize(&players.target[i])
-	}
-}
-
-func collisionCheck() {
-	checkMap()
-}
-
-func checkMap() {
-	tileSize := Vec{20, 20, 20}
-	for velIx, id := range vel.ids {
-		posIx := ents[id][PosComp]
-		sizeIx := ents[id][SizeComp]
-		px := math.Floor(pos.v[posIx][0] / 20)
-		py := math.Floor(pos.v[posIx][1] / 20)
-
-		r := size.v[sizeIx][0] / 2
-
-		rt := math.Ceil(r / 20)
-		for tx := px - rt; tx <= px+rt; tx++ {
-			for ty := py - rt; ty <= py+rt; ty++ {
-				if tx < 0 || ty < 0 {
-					continue
-				}
-				if tx > 9 || ty > 9 {
-					continue
-				}
-				if tileMap.At(int(tx), int(ty)) == 0 {
-					continue
-				}
-				tilePos := Vec{tx*20 + 10, ty*20 + 10, 0}
-
-				v := Vec{}
-				v.Sub(&pos.v[posIx], &tilePos)
-				v.Clamp(&tileSize)
-
-				d := Vec{}
-				d.Sub(&pos.v[posIx], &tilePos)
-				d.Sub(&d, &v)
-
-				dist := math.Sqrt(d.Nrm2Sq())
-				vProj := Dot(&vel.v[velIx], &d)
-				vProj /= dist
-
-				remove := dist - r + vProj
-				if remove < 0 {
-					if dist < r {
-						dPos := Vec{}
-						dPos.Scale(r/dist-1, &d)
-						pos.v[posIx].Add(&pos.v[posIx], &dPos)
-					}
-
-					d.Scale(-remove/dist, &d)
-					vel.v[velIx].Add(&vel.v[velIx], &d)
-				}
-			}
-		}
-	}
-}
-
-func login(id EntId) {
-	if len(players.ids) > 4 {
-		return
-	}
-	entIds[id] = struct{}{}
-
-	childId := newId()
-	child := make(map[CompId]int)
-	ents[childId] = child
-	entIds[childId] = struct{}{}
-
-	child[ModelComp] = model.Append(childId, Tank)
-	child[PosComp] = pos.Append(childId, Vec{50, 100, 0})
-	child[SizeComp] = size.Append(childId, Vec{40, 4, 4})
-	child[RotComp] = rot.Append(childId, 0)
-
-	ent := make(map[CompId]int)
-	ents[id] = ent
-
-	ent[ModelComp] = model.Append(id, Tank)
-	ent[PosComp] = pos.Append(id, Vec{50, 100, 0})
-	ent[SizeComp] = size.Append(id, Vec{20, 16, 5})
-	ent[RotComp] = rot.Append(id, 0)
-	ent[VelComp] = vel.Append(id, Vec{})
-	ent[PlayerComp] = players.Append(id, Vec{1, 0, 0}, 0, childId)
-}
-
-func startGame() {
-}
-
-func disconnect(id EntId) {
-	if ents[id] == nil {
-		return
-	}
-	ent := ents[id]
-	childId := players.turret[ent[PlayerComp]]
-	child := ents[childId]
-	model.Remove(child[ModelComp])
-	pos.Remove(child[PosComp])
-	size.Remove(child[SizeComp])
-	rot.Remove(child[RotComp])
-	delete(entIds, childId)
-	ents[childId] = nil
-
-	model.Remove(ent[ModelComp])
-	pos.Remove(ent[PosComp])
-	size.Remove(ent[SizeComp])
-	rot.Remove(ent[RotComp])
-	players.Remove(ent[PlayerComp])
-	vel.Remove(ent[VelComp])
-	delete(entIds, id)
-	ents[id] = nil
-}
-
-func stopGame() {
-}
-
 func serialize(buf io.Writer, serAll bool) {
-
-	bitMask := NewBitMask(4)
-	bufTemp := &bytes.Buffer{}
-
-	binary.Write(buf, binary.LittleEndian, uint32(len(entIds)))
-	for id := range entIds {
-		binary.Write(buf, binary.LittleEndian, id)
-		ent := ents[id]
-		entOld := entsOld[id]
-		doDelta := serAll
-		if entOld == nil {
-			doDelta = false
-		}
-
-		modelIx := ent[ModelComp]
-		modelIxOld := entOld[ModelComp]
-
-		if doDelta || model.m[modelIx] != modelOld.m[modelIxOld] {
-			bitMask.Set(0)
-			binary.Write(bufTemp, binary.LittleEndian,
-				model.m[modelIx])
-		}
-
-		posIx := ent[PosComp]
-		posIxOld := entOld[PosComp]
-
-		if doDelta || !pos.v[posIx].Equals(&posOld.v[posIxOld]) {
-			bitMask.Set(1)
-			binary.Write(bufTemp, binary.LittleEndian,
-				&pos.v[posIx])
-		}
-
-		sizeIx := ent[SizeComp]
-		sizeIxOld := entOld[SizeComp]
-
-		if doDelta || !size.v[sizeIx].Equals(&sizeOld.v[sizeIxOld]) {
-			bitMask.Set(2)
-			binary.Write(bufTemp, binary.LittleEndian,
-				&size.v[sizeIx])
-		}
-
-		rotIx := ent[RotComp]
-		rotIxOld := entOld[RotComp]
-
-		if doDelta || rot.v[rotIx] != rotOld.v[rotIxOld] {
-			bitMask.Set(3)
-			binary.Write(bufTemp, binary.LittleEndian,
-				rot.v[rotIx])
+	nEnts := 0
+	for _, act := range active {
+		if act {
+			nEnts++
 		}
 	}
-	buf.Write(bitMask)
-	buf.Write(bufTemp.Bytes())
+	binary.Write(buf, binary.LittleEndian, uint32(nEnts))
+	for id, act := range active {
+		if !act {
+			continue
+		}
+		binary.Write(buf, binary.LittleEndian, EntId(id))
+
+		bitMask := NewBitMask(4)
+		bufTemp := &bytes.Buffer{}
+		if serAll || model[id] != modelOld[id] {
+			bitMask.Set(0)
+			binary.Write(bufTemp, binary.LittleEndian, model[id])
+		}
+		if serAll || !pos[id].Equals(&posOld[id]) {
+			bitMask.Set(1)
+			binary.Write(bufTemp, binary.LittleEndian, &pos[id])
+		}
+		if serAll || !size[id].Equals(&sizeOld[id]) {
+			bitMask.Set(2)
+			binary.Write(bufTemp, binary.LittleEndian, &size[id])
+		}
+		if serAll || rot[id] != rotOld[id] {
+			bitMask.Set(3)
+			binary.Write(bufTemp, binary.LittleEndian, rot[id])
+		}
+		buf.Write(bitMask)
+		buf.Write(bufTemp.Bytes())
+	}
 
 	tileMap.Serialize(buf, serAll, tileMapOld)
 }
