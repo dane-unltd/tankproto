@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/dane-unltd/engine/math3"
 	"math"
 )
 
@@ -53,12 +54,13 @@ func processInput() {
 
 func collisionCheck() {
 	checkMap()
+	checkEnts()
 }
 
 func checkMap() {
-	tileSize := Vec{20, 20, 20}
+	tileSize := math3.Vec{20, 20, 20}
 	for id, act := range active {
-		if !act || size[id].Equals(&Vec{}) {
+		if !act || size[id].Equals(&math3.Vec{}) {
 			continue
 		}
 		px := math.Floor(pos[id][0] / 20)
@@ -78,30 +80,66 @@ func checkMap() {
 				if tileMap.At(int(tx), int(ty)) == 0 {
 					continue
 				}
-				tilePos := Vec{tx*20 + 10, ty*20 + 10, 0}
+				tilePos := math3.Vec{tx*20 + 10, ty*20 + 10, 0}
 
-				v := Vec{}
+				v := math3.Vec{}
 				v.Sub(&pos[id], &tilePos)
 				v.Clamp(&tileSize)
 
-				d := Vec{}
+				d := math3.Vec{}
 				d.Sub(&pos[id], &tilePos)
 				d.Sub(&d, &v)
 
 				dist := math.Sqrt(d.Nrm2Sq())
-				vProj := Dot(&vel[id], &d)
+				vProj := math3.Dot(&vel[id], &d)
 				vProj /= dist
 
 				remove := dist - r + vProj
 				if remove < 0 {
 					if dist < r {
-						dPos := Vec{}
+						dPos := math3.Vec{}
 						dPos.Scale(r/dist-1, &d)
 						pos[id].Add(&pos[id], &dPos)
 					}
 
 					d.Scale(-remove/dist, &d)
 					vel[id].Add(&vel[id], &d)
+				}
+			}
+		}
+	}
+}
+
+func checkEnts() {
+	for id1, ct1 := range collType {
+		if ct1 == CollNone {
+			continue
+		}
+		for id2 := id1 + 1; id2 < len(collType); id2++ {
+			ct2 := collType[id2]
+			if ct2 == CollNone {
+				continue
+			}
+			if ct1 == CollProjectile && ct2 == CollProjectile {
+				continue
+			}
+			r1, r2 := size[id1][0]/2, size[id2][0]/2
+			d := math3.Vec{}
+
+			d.Sub(&pos[id1], &pos[id2])
+			dist := d.Nrm2()
+			vDiff := math3.Vec{}
+			vDiff.Sub(&vel[id1], &vel[id2])
+			vProj := math3.Dot(&vDiff, &d)
+			vProj /= dist
+
+			remove := dist - r1 - r2 + vProj
+			if remove < 0 {
+				if dist < r1+r2 {
+					dPos := math3.Vec{}
+					dPos.Scale(0.5*((r1+r2)/dist-1), &d)
+					pos[id1].Add(&pos[id1], &dPos)
+					pos[id2].Sub(&pos[id2], &dPos)
 				}
 			}
 		}
@@ -116,7 +154,7 @@ func placeTurrets() {
 		entId := players[id].ent
 		turretId := child[entId]
 
-		offset := Vec{}
+		offset := math3.Vec{}
 		offset.Scale(4, &players[id].target)
 		pos[turretId].Add(&pos[entId], &offset)
 		rot[turretId] = math.Atan2(offset[1], offset[0])

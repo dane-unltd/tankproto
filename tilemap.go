@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/dane-unltd/engine/bitmask"
 	"io"
 )
 
@@ -40,7 +41,7 @@ func (dest *TileMap) Copy(src *TileMap) {
 }
 
 func (tm *TileMap) Serialize(buf io.Writer, serAll bool, tmOld *TileMap) {
-	bitMask := NewBitMask(len(tm.Tiles))
+	bitMask := bitmask.New(len(tm.Tiles))
 	bufTemp := &bytes.Buffer{}
 	for i := range tm.Tiles {
 		if serAll || tm.Tiles[i] != tmOld.Tiles[i] {

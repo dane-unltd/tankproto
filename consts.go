@@ -1,17 +1,12 @@
 package main
 
 type ModelId uint32
+type CollType uint32
 
 const (
-	PosComp CompId = iota
-	SizeComp
-	RotComp
-	VelComp
-	ModelComp
-	ActiveComp
-	ChildComp
-
-	NumComps
+	CollNone CollType = iota
+	CollProjectile
+	CollUnit
 )
 
 const (

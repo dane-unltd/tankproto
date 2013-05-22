@@ -82,6 +82,10 @@ $(document).ready(function() {
 			clientFrame()
 		}
 		ws.onmessage = function(evt) {
+
+			for (id in ents) {
+				ents[id].garbage = true
+			}
 			var buf = new DataStream(evt.data)
 
 			var nEnts = buf.readUint32()
@@ -92,8 +96,12 @@ $(document).ready(function() {
 				if (!ents[id]) {
 					ents[id] = new Object()
 				}
+				ents[id].garbage = false
 				var c = 0;
 				if ((bitMask & (1<<c))>0) {
+					if (ents[id].mesh) {
+						scene.remove(ents[id].mesh)
+					}
 					ents[id].mesh =
 						newMesh(buf.readUint32())
 				}
@@ -140,6 +148,16 @@ $(document).ready(function() {
 					}
 				}
 
+			}
+
+			for (id in ents) {
+				if (ents[id].garbage == true) {
+					if (ents[id].mesh) {
+						scene.remove(ents[id].mesh)
+					}
+					delete ents[id]
+					console.log("deleted:"+id)
+				}
 			}
 		}
 		ws.onclose = function() { 

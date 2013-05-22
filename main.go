@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"code.google.com/p/go.net/websocket"
 	"encoding/binary"
+	"github.com/dane-unltd/engine/math3"
 	"log"
 	"net/http"
 	"time"
@@ -13,16 +14,14 @@ type Action uint32
 
 type UserCommand struct {
 	Actions uint32
-	Target  Vec
+	Target  math3.Vec
 }
 
 type ClientConn struct {
 	cmdBuf     chan UserCommand
 	currentCmd UserCommand
-	//TODO: remove id?
-	id    PlayerId
-	ws    *websocket.Conn
-	inBuf [1500]byte
+	ws         *websocket.Conn
+	inBuf      [1500]byte
 }
 
 var newConn = make(chan *ClientConn)
@@ -35,7 +34,7 @@ func Active(id PlayerId, action Action) bool {
 	return false
 }
 
-func target(id PlayerId) *Vec {
+func target(id PlayerId) *math3.Vec {
 	return &clients[id].currentCmd.Target
 }
 
