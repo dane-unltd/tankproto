@@ -59,8 +59,8 @@ func collisionCheck() {
 
 func checkMap() {
 	tileSize := math3.Vec{20, 20, 20}
-	for id, act := range active {
-		if !act || size[id].Equals(&math3.Vec{}) {
+	for id, ct := range collType {
+		if ct == CollNone {
 			continue
 		}
 		px := math.Floor(pos[id][0] / 20)
