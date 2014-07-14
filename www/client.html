@@ -18,7 +18,7 @@ var mousePos = new THREE.Vector3(0,0,0.5)
 var ws
 var interval = 1000/30;
 var ents = new Object();
-var tileMap = new Array(10*10)
+var terrain
 
 var camera, scene, projector, renderer;
 var canvas
@@ -46,6 +46,15 @@ function init3d() {
 	mat2 = new THREE.MeshLambertMaterial( { color: 0x00ff00, shading: THREE.SmoothShading } );
 	mat3 = new THREE.MeshLambertMaterial( { color: 0x0000ff, shading: THREE.SmoothShading } );
 
+
+	terrain = new THREE.Geometry();
+
+	for (var x = 0; x<10; x++) {
+		for (var y = 0; y<10; y++) {
+			terrain.vertices.push( new THREE.vector3( x + 0.5*y, y*Sqrt(3)/2,0))
+		}
+	}
+
 	renderer = new THREE.WebGLRenderer();
 	renderer.setSize( 640, 480)
 
@@ -71,9 +80,6 @@ $(document).ready(function() {
 	if ("WebSocket" in window) {
 		init3d()
 
-		for (var t=0; t<10*10; ++t) {
-			tileMap[t] = new Object()
-		}
 		// Let us open a web socket
 		ws = new WebSocket("ws://"+document.location.host+"/ws/pong");
 		ws.binaryType = "arraybuffer";
@@ -133,19 +139,7 @@ $(document).ready(function() {
 				var byIx = Math.floor(i / 8)
 				var bitIx = (i % 8)
 				if ((bitMask[byIx] & (1<<bitIx))>0) {
-					if (tileMap[i].mesh) {
-						scene.remove(tileMap[i].mesh)
-						tileMap[i].mesh = undefined
-					}
-					tile = buf.readUint8()
-					if (tile == 1) {
-						var x = i%10*20 + 10;
-						var y = Math.floor(i/10)*20 + 10;
-						tileMap[i].mesh = newMesh(3)
-						tileMap[i].mesh.position.x = x
-						tileMap[i].mesh.position.y = y
-						tileMap[i].mesh.scale.set(20,20,10)
-					}
+					height = buf.readFloat64()
 				}
 
 			}

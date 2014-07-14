@@ -53,11 +53,24 @@ func processInput() {
 }
 
 func collisionCheck() {
-	checkMap()
+	checkTerrain(terrain)
 	checkEnts()
 }
 
-func checkMap() {
+func checkTerrain(t *Terrain) {
+	for id, ct := range collType {
+		if ct == CollNone {
+			continue
+		}
+		px, py := t.Transform(pos[id][0], pos[id][1])
+
+		x, y := math.Ceil(px), math.Ceil(py)
+
+		pos[id][2] = t.At(int(x), int(y))
+	}
+}
+
+func checkMap(tileMap *TileMap) {
 	tileSize := math3.Vec{20, 20, 20}
 	for id, ct := range collType {
 		if ct == CollNone {

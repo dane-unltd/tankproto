@@ -18,8 +18,8 @@ const (
 )
 
 //world state
-var tileMapOld = NewTileMap(10, 10)
-var tileMap = NewTileMap(10, 10)
+var terrainOld = NewTerrain(10, 1)
+var terrain = NewTerrain(10, 1)
 
 //entity state
 var active = entstate.NewBoolState()
@@ -46,21 +46,14 @@ func init() {
 
 	//initializing map
 	fmt.Println("initializing")
-
-	for i := 0; i < 10; i++ {
-		tileMap.Set(0, i, 1)
-		tileMap.Set(i, 0, 1)
-		tileMap.Set(9, i, 1)
-		tileMap.Set(i, 9, 1)
-	}
 }
 
 func serialize(buf io.Writer, serAll bool) {
 	entstate.Serialize(buf, serAll, active)
-	tileMap.Serialize(buf, serAll, tileMapOld)
+	terrain.Serialize(buf, serAll, terrainOld)
 }
 
 func copyState() {
 	entstate.CopyState()
-	tileMapOld.Copy(tileMap)
+	terrainOld.Copy(terrain)
 }

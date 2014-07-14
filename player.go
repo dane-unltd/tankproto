@@ -16,8 +16,10 @@ type Player struct {
 var numPlayers = 0
 var players = make([]Player, 0, 10)
 
-func incMaxPlayers() {
-	players = append(players, Player{})
+func incMaxPlayers(n uint32) {
+	for len(players) < int(n) {
+		players = append(players, Player{})
+	}
 }
 
 func login(id PlayerId) {

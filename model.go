@@ -37,6 +37,8 @@ func (st ModelState) Equal(v interface{}, id entstate.EntId) bool {
 	return model == st[id]
 }
 
-func (st *ModelState) Append() {
-	(*st) = append((*st), 0)
+func (st *ModelState) Append(n uint32) {
+	for len(*st) < int(n) {
+		(*st) = append((*st), 0)
+	}
 }

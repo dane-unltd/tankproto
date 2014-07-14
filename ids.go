@@ -13,11 +13,6 @@ type IdMap map[entstate.EntId]struct{}
 
 var plGen = idgen.New(incMaxPlayers)
 
-func init() {
-	fmt.Println("starting id generators")
-	go plGen.Run()
-}
-
 func freePlayerId(id PlayerId) {
 	fmt.Println("free", id)
 	plGen.Free(uint32(id))
