@@ -31,10 +31,10 @@ func login(id PlayerId) {
 
 	turretId := entstate.New()
 
-	fmt.Println(turretId)
+	fmt.Println("turr id", turretId)
 	active[turretId] = true
 	model[turretId] = Tank
-	pos[turretId] = math3.Vec{50, 100, 0}
+	pos[turretId] = math3.Vec{40, 10, 0}
 	size[turretId] = math3.Vec{40, 4, 4}
 	rot[turretId] = 0
 

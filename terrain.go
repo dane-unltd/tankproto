@@ -52,7 +52,7 @@ func (t *Terrain) Serialize(buf io.Writer, serAll bool, tOld *Terrain) {
 }
 
 func (t *Terrain) Transform(x, y float64) (xt, yt float64) {
-	xt = x - y/math.Sqrt(3)
-	yt = 2 * y / math.Sqrt(3)
+	xt = (x - y/math.Sqrt(3)) / t.Dx
+	yt = (2 * y / math.Sqrt(3)) / t.Dx
 	return
 }

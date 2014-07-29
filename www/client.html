@@ -51,7 +51,7 @@ function init3d() {
 
 	for (var x = 0; x<10; x++) {
 		for (var y = 0; y<10; y++) {
-			terrain.vertices.push( new THREE.vector3( x + 0.5*y, y*Sqrt(3)/2,0))
+			terrain.vertices.push( new THREE.Vector3( x + 0.5*y, y*Math.sqrt(3)/2,0))
 		}
 	}
 

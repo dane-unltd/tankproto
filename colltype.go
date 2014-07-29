@@ -38,7 +38,7 @@ func (st CollTypeState) Equal(v interface{}, id entstate.EntId) bool {
 }
 
 func (st *CollTypeState) Append(n uint32) {
-	for len(*st) < int(n) {
+	for len(*st) <= int(n) {
 		(*st) = append((*st), 0)
 	}
 }

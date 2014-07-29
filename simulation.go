@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/dane-unltd/engine/math3"
 	"math"
 )
@@ -66,6 +67,7 @@ func checkTerrain(t *Terrain) {
 
 		x, y := math.Ceil(px), math.Ceil(py)
 
+		fmt.Println(pos[id][2], x, y)
 		pos[id][2] = t.At(int(x), int(y))
 	}
 }
