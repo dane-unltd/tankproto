@@ -18,8 +18,8 @@ const (
 )
 
 //world state
-var terrainOld = NewTerrain(10, 10)
-var terrain = NewTerrain(10, 10)
+var terrainOld = NewTerrain(100, 10.0)
+var terrain = NewTerrain(100, 10.0)
 
 //entity state
 var active = entstate.NewBoolState()

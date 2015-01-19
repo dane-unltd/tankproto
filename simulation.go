@@ -67,7 +67,7 @@ func checkTerrain(t *Terrain) {
 
 		x, y := math.Ceil(px), math.Ceil(py)
 
-		fmt.Println(pos[id][2], x, y)
+		fmt.Println(pos[id][0], pos[id][1], px, py)
 		pos[id][2] = t.At(int(x), int(y))
 	}
 }

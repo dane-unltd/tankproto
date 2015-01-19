@@ -42,7 +42,7 @@ func login(id PlayerId) {
 
 	active[entId] = true
 	model[entId] = Tank
-	pos[entId] = math3.Vec{50, 100, 0}
+	pos[entId] = math3.Vec{50, 50, 0}
 	size[entId] = math3.Vec{20, 16, 5}
 	vel[entId] = math3.Vec{}
 	rot[entId] = 0
